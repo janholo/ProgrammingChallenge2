@@ -1,3 +1,6 @@
+using System;
+using System.Globalization;
+
 namespace ProgrammingChallenge2.Model
 {
     public class PhysicalValue
@@ -13,7 +16,7 @@ namespace ProgrammingChallenge2.Model
 
         public override string ToString()
         {
-            return $"{Value:F3}{Unit}";
+            return FormattableString.Invariant($"{Value:F3}{Unit}");
         }
     }
 }
