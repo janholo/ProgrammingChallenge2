@@ -2,7 +2,7 @@ using ProgrammingChallenge2.Model;
 
 namespace ProgrammingChallenge2
 {
-    interface IDataSource
+    public interface IDataSource
     {
         IotDevice GetNextDataPoint();
     }

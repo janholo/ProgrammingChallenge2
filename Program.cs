@@ -1,35 +1,25 @@
 ﻿using System;
 using ProgrammingChallenge2.Codecs;
-using ProgrammingChallenge2.Codecs.JanReinhardt;
 using ProgrammingChallenge2.Model;
 
 namespace ProgrammingChallenge2
 {
-    class Program
+    public class Program
     {
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             var source = new DataSource();
-            IEncoder encoder = new JsonCodec();
-            IDecoder decoder = new JsonCodec();
+            var codec = new Codecs.JanReinhardt.JsonCodec();
 
-            var data = source.GetNextDataPoint();
-            Console.WriteLine("original data:");
-            Console.WriteLine(data);
-            Console.WriteLine();
+            var seq = new TransmissionSequence();
 
-            var encodedData = encoder.Encode(data);
-            Console.WriteLine("encoded data:");
-            Console.WriteLine(BitConverter.ToString(encodedData).Replace("-", ""));
-            Console.WriteLine();
+            // 30days * 24h * 60min * 60s = 2592000
+            long messageCount = 30*24*60*60;
 
-            var decodedData = decoder.Decode(encodedData);
-            Console.WriteLine("decoded data:");
-            Console.WriteLine(decodedData);
-            Console.WriteLine();
+            var totalBytesTransmitted = seq.Run(source, codec, codec, messageCount, false);
 
-            var isEqual = IotDevice.AreEquals(data, decodedData, true);
-            Console.WriteLine($"Encoding/Decoding successful: {isEqual}");
+            Console.WriteLine($"Total bytes transmitted: {totalBytesTransmitted}");
+            Console.WriteLine(FormattableString.Invariant($"({totalBytesTransmitted/1024.0:F1}kB, {totalBytesTransmitted/(1024*1024):F1}MB)"));
         }
     }
 }

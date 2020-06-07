@@ -3,7 +3,7 @@ using ProgrammingChallenge2.Model;
 
 namespace ProgrammingChallenge2.Codecs
 {
-    interface IEncoder
+    public interface IEncoder
     {
         byte[] Encode(IotDevice device);
     }
