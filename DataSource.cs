@@ -14,9 +14,9 @@ namespace ProgrammingChallenge2
 
         public DataSource()
         {
-            name = "Test";
-            id = Guid.NewGuid().ToString("D");
             random = new Random();
+            name = CreateRandomString(12);
+            id = Guid.NewGuid().ToString("D");
         }
 
         public IotDevice GetNextDataPoint()
@@ -24,7 +24,7 @@ namespace ProgrammingChallenge2
             uptimeInSeconds += (ulong)(random.NextDouble() * 100.0);
 
             if(msg == null || random.NextDouble() < 0.1) {
-                msg = CreateRandomString();
+                msg = CreateRandomString(3) + " " + CreateRandomString(4) + " " + CreateRandomString(3);
             }
 
             return new IotDevice(
@@ -40,9 +40,9 @@ namespace ProgrammingChallenge2
             );
         }
 
-        private string CreateRandomString()
+        private string CreateRandomString(int length)
         {
-            return new string(Enumerable.Repeat('a', 12).Select(s => (char)((int)s + random.Next(24))).ToArray());
+            return new string(Enumerable.Repeat('a', length).Select(s => (char)((int)s + random.Next(25))).ToArray());
         }
     }
 }
