@@ -24,6 +24,9 @@ Somehow your boss thinks this is a lot and gives you the task of reducing data u
 1. In the folder `Codecs` create a folder with your name.
 1. In this folder create a class which implement the `ICodecFactory.cs` interface. This class is used to create serializer and deserializer instances and gives your implementation a name.
 1. Write a class which implements `IDecoder.cs` and a class which implements `IEncoder.cs` and use these implementations in your `ICodecFactory.cs`
+   1. The encoder transforms a instance of `IotDevice` into a byte array.
+   1. This byte array is transmitted to the cloud
+   1. The decoder transform the byte array back to an `IotDevice`
 1. A starting point for the implementation can be seen in the folder `Codecs/Jan.Reinhardt/`
 1. To test your implementation adjust the `Program.cs` file as seen bellow. Change the initialisation of the `codecFactory` variable.
 1. Run `dotnet run` to see how many bytes your solution needs.
@@ -46,6 +49,6 @@ var codecFactory = new Codecs.<YourName>.<YourFactory>();
 
 The competition ends at 27. August 2020.
 
-After the competition ends the solution which managed to get the data across with the minimum amount of bytes wins!
+After the competition ends the solution which manages to get the data across with the minimum amount of bytes wins!
 
 Happy coding!
