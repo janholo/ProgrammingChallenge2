@@ -29,7 +29,7 @@ Somehow your boss thinks this is a lot and gives you the task of reducing data u
    1. The decoder transform the byte array back to an `IotDevice`
 1. A starting point for the implementation can be seen in the folder `Codecs/Jan.Reinhardt/`
 1. To test your implementation adjust the `Program.cs` file as seen bellow. Change the initialisation of the `codecFactory` variable.
-1. Run `dotnet run` to see how many bytes your solution needs.
+1. Run `dotnet run` to see how many bytes your solution needs for the given amount of messages.
 1. To submit your solution just send a PR to the Github repo.
 
 > All participants work with the same repository, so please only commit changes in your own folder. Keep your changes to the `Program.cs` only locally. Expect for bugfixes or other improvements :-)
