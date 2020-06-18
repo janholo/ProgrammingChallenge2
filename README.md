@@ -2,7 +2,7 @@
 
 Welcome to the 2. Programming Challenge.
 
-The task in this challenge is to implement a data serializer/deserializer which minimizes the amount of data send.
+The task in this challenge is to implement a data serializer/deserializer which minimizes the amount of data send between an edge device and the cloud.
 
 ## Background
 
