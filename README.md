@@ -42,7 +42,7 @@ var codecFactory = new Codecs.<YourName>.<YourFactory>();
 
 - The `TransmissionSequence.Run` method has a `debug` parameter. Set this to `true` in `Program.cs` to get insight into your solution.
 - Because this is only a test app it is easily possible to cheat. Please find a solution which would also work in the real world (Encoder and Decoder are on different computers)
-- The solution only needs to work for the `DataSource.cs` provided in this repo and not for any data source possible.
+- The solution only needs to work for the `DataSource.cs` provided in this repo and not for any data source possible (Except for the random seed which is only fixed so results are comparable).
 - Other networking problems such as message integrity, message order, missing messages, etc can be ignored for this task.
 
 ## End of the competition
