@@ -14,7 +14,7 @@ namespace ProgrammingChallenge2
 
         public DataSource()
         {
-            random = new Random();
+            random = new Random(9001);
             name = CreateRandomString(12);
             id = Guid.NewGuid().ToString("D");
         }
@@ -23,7 +23,8 @@ namespace ProgrammingChallenge2
         {
             uptimeInSeconds += (ulong)(random.NextDouble() * 100.0);
 
-            if(msg == null || random.NextDouble() < 0.1) {
+            if (msg == null || random.NextDouble() < 0.1)
+            {
                 msg = CreateRandomString(3) + " " + CreateRandomString(4) + " " + CreateRandomString(3);
             }
 
