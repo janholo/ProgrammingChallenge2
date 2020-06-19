@@ -44,6 +44,8 @@ var codecFactory = new Codecs.<YourName>.<YourFactory>();
 - Because this is only a test app it is easily possible to cheat. Please find a solution which would also work in the real world (Encoder and Decoder are on different computers)
 - The solution only needs to work for the `DataSource.cs` provided in this repo and not for any data source possible.
 - Other networking problems such as message integrity, message order, missing messages, etc can be ignored for this task.
+- By default all available codec factories will be run
+- Use the RunOnlyThis attribute to run only your codec factory (see `Codecs/Jan.Reinhard/JsonCodecFactory.cs`)
 
 ## End of the competition
 

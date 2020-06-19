@@ -1,6 +1,7 @@
-namespace ProgrammingChallenge2.Codecs.JanReinhardt 
+namespace ProgrammingChallenge2.Codecs.JanReinhardt
 {
     // Demo implementation of the factory
+    [RunOnlyThisAttribute]
     public class JsonCodecFactory : ICodecFactory
     {
         public string Name => "JsonCodec by Jan Reinhardt";
