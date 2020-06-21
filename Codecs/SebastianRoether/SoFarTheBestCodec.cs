@@ -6,7 +6,7 @@ using System.IO.Compression;
 
 namespace ProgrammingChallenge2.Codecs.SebastianRoether 
 {
-    // Lame attempt at winning the context with minimal effort and a suboptimal codec
+    // Lame attempt at winning the contest with minimal effort and a suboptimal codec
     public class SoFarTheBestCodec : IEncoder, IDecoder
     {
         public byte[] Encode(IotDevice device)
