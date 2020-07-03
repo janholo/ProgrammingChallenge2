@@ -23,8 +23,6 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             var type = typeof(T);
 
             using var resultStream = new MemoryStream();
-            //using var compressor = new GZipStream(resultStream, CompressionMode.Compress);
-            //using var memoryStream = new MemoryStream();
 
             if (!_properties.ContainsKey(type))
             {
@@ -32,9 +30,6 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             }
 
             SerializeType(resultStream, type, obj);
-
-            //memoryStream.Position = 0;
-            //memoryStream.CopyTo(compressor);
 
             var bytes = resultStream.ToArray();
             return bytes;
@@ -45,10 +40,6 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             var type = typeof(T);
 
             using var inputStream = new MemoryStream(compressedData);
-            //using var decompressor = new GZipStream(inputStream, CompressionMode.Decompress);
-            //using var outputStream = new MemoryStream();
-
-            //decompressor.CopyTo(outputStream);
 
             var data = inputStream.ToArray();
 
@@ -163,6 +154,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             }
             else
             {
+                // hacky
                 var backingField = property.DeclaringType.GetField($"<{property.Name}>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
                 if (backingField is object)
                 {
