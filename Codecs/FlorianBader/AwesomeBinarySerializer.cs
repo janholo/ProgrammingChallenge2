@@ -12,11 +12,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 {
     public class AwesomeBinarySerializer
     {
-        private readonly ConcurrentDictionary<Type, PropertyInfo[]> _properties = new ConcurrentDictionary<Type, PropertyInfo[]>();
-
-        public AwesomeBinarySerializer()
-        {
-        }
+        private readonly ConcurrentDictionary<Type, PropertyInfo[]> _serializableTypes = new ConcurrentDictionary<Type, PropertyInfo[]>();
 
         public byte[] Serialize<T>(T obj)
         {
@@ -24,10 +20,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
             using var resultStream = new MemoryStream();
 
-            if (!_properties.ContainsKey(type))
-            {
-                CacheProperties(type);
-            }
+            CacheProperties(type);
 
             SerializeType(resultStream, type, obj);
 
@@ -35,48 +28,45 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return bytes;
         }
 
-        public T Deserialize<T>(byte[] compressedData) where T : class
+        public T Deserialize<T>(byte[] data) where T : class
         {
             var type = typeof(T);
 
-            using var inputStream = new MemoryStream(compressedData);
+            CacheProperties(type);
 
-            var data = inputStream.ToArray();
+            var span = new ReadOnlySpan<byte>(data);
 
-            if (!_properties.ContainsKey(type))
-            {
-                CacheProperties(type);
-            }
-
-            return CreateInstance(ref data, typeof(T)) as T;
+            var instance = CreateInstance(span, typeof(T)) as T;
+            return instance;
         }
 
-        private object CreateInstance(ref byte[] data, Type type)
+        private object CreateInstance(in ReadOnlySpan<byte> data, Type type)
         {
             var index = 0;
-            return CreateInstance(ref data, type, ref index);
+            return CreateInstance(data, type, ref index);
         }
 
-        private object CreateInstance(ref byte[] data, Type type, ref int index)
+        private object CreateInstance(in ReadOnlySpan<byte> data, Type type, ref int index)
         {
+            // hacky, better solution would be to find the correct constructor
             var instance = FormatterServices.GetUninitializedObject(type);
-            var properties = _properties[type];
+            var properties = _serializableTypes[type];
 
             foreach (var property in properties)
             {
                 if (property.PropertyType == typeof(string))
                 {
-                    var length = BitConverter.ToUInt16(data, index);
+                    var length = BitConverter.ToUInt16(data.Slice(index, 2));
                     index += 2;
 
-                    var value = Encoding.UTF8.GetString(data, index, length);
+                    var value = Encoding.UTF8.GetString(data.Slice(index, length));
                     index += length;
 
                     SetPropertyValue(property, instance, value);
                 }
                 else if (property.PropertyType.IsClass)
                 {
-                    var propertyInstance = CreateInstance(ref data, property.PropertyType, ref index);
+                    var propertyInstance = CreateInstance(data, property.PropertyType, ref index);
                     SetPropertyValue(property, instance, propertyInstance);
                 }
                 else
@@ -85,52 +75,52 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
                     if (property.PropertyType == typeof(bool))
                     {
-                        value = BitConverter.ToBoolean(data, index);
+                        value = BitConverter.ToBoolean(data.Slice(index, 1));
                         index += 1;
                     }
                     else if (property.PropertyType == typeof(char))
                     {
-                        value = BitConverter.ToChar(data, index);
+                        value = BitConverter.ToChar(data.Slice(index, 2));
                         index += 2;
                     }
                     else if (property.PropertyType == typeof(double))
                     {
-                        value = BitConverter.ToDouble(data, index);
+                        value = BitConverter.ToDouble(data.Slice(index, 8));
                         index += 8;
                     }
                     else if (property.PropertyType == typeof(short))
                     {
-                        value = BitConverter.ToInt16(data, index);
+                        value = BitConverter.ToInt16(data.Slice(index, 2));
                         index += 2;
                     }
                     else if (property.PropertyType == typeof(int))
                     {
-                        value = BitConverter.ToInt32(data, index);
+                        value = BitConverter.ToInt32(data.Slice(index, 4));
                         index += 4;
                     }
                     else if (property.PropertyType == typeof(long))
                     {
-                        value = BitConverter.ToInt64(data, index);
+                        value = BitConverter.ToInt64(data.Slice(index, 8));
                         index += 8;
                     }
                     else if (property.PropertyType == typeof(float))
                     {
-                        value = BitConverter.ToSingle(data, index);
+                        value = BitConverter.ToSingle(data.Slice(index, 4));
                         index += 4;
                     }
                     else if (property.PropertyType == typeof(ushort))
                     {
-                        value = BitConverter.ToUInt16(data, index);
+                        value = BitConverter.ToUInt16(data.Slice(index, 2));
                         index += 2;
                     }
                     else if (property.PropertyType == typeof(uint))
                     {
-                        value = BitConverter.ToUInt32(data, index);
+                        value = BitConverter.ToUInt32(data.Slice(index, 4));
                         index += 4;
                     }
                     else if (property.PropertyType == typeof(ulong))
                     {
-                        value = BitConverter.ToUInt64(data, index);
+                        value = BitConverter.ToUInt64(data.Slice(index, 8));
                         index += 8;
                     }
                     else
@@ -153,7 +143,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             }
             else
             {
-                // hacky
+                // hacky, better solution would be to find the correct constructor
                 var backingField = property.DeclaringType.GetField($"<{property.Name}>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
                 if (backingField is object)
                 {
@@ -164,25 +154,28 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
         private void CacheProperties(Type type)
         {
-            var properties =
-                type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .OrderBy(t => t.Name)
-                .ToArray();
-
-            foreach (var property in properties)
+            if (!_serializableTypes.ContainsKey(type))
             {
-                if (property.PropertyType.IsClass && property.PropertyType != typeof(string) && !_properties.ContainsKey(property.PropertyType))
-                {
-                    CacheProperties(property.PropertyType);
-                }
-            }
+                var properties =
+                    type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .OrderBy(t => t.Name)
+                    .ToArray();
 
-            _properties.AddOrUpdate(type, properties, (t, p) => p);
+                foreach (var property in properties)
+                {
+                    if (property.PropertyType.IsClass && property.PropertyType != typeof(string) && !_serializableTypes.ContainsKey(property.PropertyType))
+                    {
+                        CacheProperties(property.PropertyType);
+                    }
+                }
+
+                _serializableTypes.AddOrUpdate(type, properties, (t, p) => p);
+            }
         }
 
         private void SerializeType(Stream stream, Type type, object obj)
         {
-            var properties = _properties[type];
+            var properties = _serializableTypes[type];
             foreach (var property in properties)
             {
                 if (property.PropertyType == typeof(string))
