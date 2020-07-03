@@ -10,12 +10,12 @@ namespace ProgrammingChallenge2
         {
             var source = new DataSource();
 
-            var codecFactory = new Codecs.JanReinhardt.JsonCodecFactory();
+            var codecFactory = new Codecs.FlorianBader.AwesomeCodecFactory();
 
             var seq = new TransmissionSequence();
 
             // 1days * 24h * 60min * 60s = 2592000
-            long messageCount = 1*24*60*60;
+            long messageCount = 1 * 24 * 60 * 60;
 
             Console.WriteLine("Start...");
 
@@ -23,7 +23,7 @@ namespace ProgrammingChallenge2
 
             Console.WriteLine($"Result for Codec '{codecFactory.Name}'");
             Console.WriteLine($"Total bytes transmitted: {totalBytesTransmitted}");
-            Console.WriteLine(FormattableString.Invariant($"({totalBytesTransmitted/1024.0:F1}kB, {totalBytesTransmitted/(1024*1024):F1}MB)"));
+            Console.WriteLine(FormattableString.Invariant($"({totalBytesTransmitted / 1024.0:F1}kB, {totalBytesTransmitted / (1024 * 1024):F1}MB)"));
         }
     }
 }
