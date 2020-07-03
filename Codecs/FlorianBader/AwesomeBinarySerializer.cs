@@ -77,7 +77,6 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
                 else if (property.PropertyType.IsClass)
                 {
                     var propertyInstance = CreateInstance(ref data, property.PropertyType, ref index);
-
                     SetPropertyValue(property, instance, propertyInstance);
                 }
                 else
@@ -195,7 +194,6 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
                     stream.Write(lengthBytes, 0, lengthBytes.Length);
 
                     stream.Write(bytes, 0, bytes.Length);
-
                 }
                 else if (property.PropertyType.IsClass)
                 {
