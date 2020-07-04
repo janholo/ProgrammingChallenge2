@@ -6,15 +6,15 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 {
     public class AwesomeCodec : IEncoder, IDecoder
     {
-        private readonly AwesomeBinarySerializer _serializer;
+        private readonly OpinionatedSerializer _serializer;
 
         public AwesomeCodec()
         {
-            _serializer = new AwesomeBinarySerializer();
+            _serializer = new OpinionatedSerializer();
         }
 
         public byte[] Encode(IotDevice device) => _serializer.Serialize(device);
 
-        public IotDevice Decode(byte[] data) => _serializer.Deserialize<IotDevice>(data);
+        public IotDevice Decode(byte[] data) => _serializer.Deserialize(data);
     }
 }
