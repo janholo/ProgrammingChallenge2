@@ -56,11 +56,11 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             {
                 if (property.PropertyType == typeof(string))
                 {
-                    var length = BitConverter.ToUInt16(data.Slice(index, 2));
-                    index += 2;
+                    var bytes = data.Slice(index);
+                    var length = bytes.IndexOf((byte)0);
 
-                    var value = Encoding.UTF8.GetString(data.Slice(index, length));
-                    index += length;
+                    var value = Encoding.UTF8.GetString(bytes.Slice(0, length));
+                    index += length + 1; // skip the terminator
 
                     SetPropertyValue(property, instance, value);
                 }
@@ -183,10 +183,8 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
                     var value = property.GetValue(obj) as string;
                     var bytes = Encoding.UTF8.GetBytes(value);
 
-                    var lengthBytes = BitConverter.GetBytes((ushort)bytes.Length);
-                    stream.Write(lengthBytes, 0, lengthBytes.Length);
-
                     stream.Write(bytes, 0, bytes.Length);
+                    stream.WriteByte((byte)0);
                 }
                 else if (property.PropertyType.IsClass)
                 {

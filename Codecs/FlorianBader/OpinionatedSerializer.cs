@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -21,28 +22,23 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
         public IotDevice Deserialize(byte[] data)
         {
-            var span = new ReadOnlySpan<byte>(data);
-
-            var instance = CreateInstance(span);
+            var instance = DeserializeType(data);
             return instance;
         }
 
-        private IotDevice CreateInstance(in ReadOnlySpan<byte> data)
+        private IotDevice DeserializeType(byte[] data)
         {
-            var index = 0;
-            var name = DeserializeString(data, ref index);
-            var id = DeserializeString(data, ref index);
-            var statusMessage = DeserializeString(data, ref index);
+            var bitReader = new BitReader(data);
 
-            var selfCheckPassed = DeserializeBoolean(data, ref index, 0);
-            index -= 1;
-
-            var serviceModeEnabled = DeserializeBoolean(data, ref index, 1);
-
-            var uptimeInSeconds = DeserializeUInt64(data, ref index);
-            var pressure = DeserializeDouble(data, ref index);
-            var temperature = DeserializeDouble(data, ref index);
-            var distance = DeserializeDouble(data, ref index);
+            var name = DeserializeString(bitReader);
+            var id = DeserializeString(bitReader);
+            var statusMessage = DeserializeString(bitReader);
+            var selfCheckPassed = DeserializeBoolean(bitReader);
+            var serviceModeEnabled = DeserializeBoolean(bitReader);
+            var uptimeInSeconds = DeserializeUInt64(bitReader);
+            var pressure = DeserializeDouble(bitReader);
+            var temperature = DeserializeDouble(bitReader);
+            var distance = DeserializeDouble(bitReader);
 
             var instance = new IotDevice(
                 name,
@@ -59,89 +55,76 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return instance;
         }
 
-        private bool DeserializeBoolean(in ReadOnlySpan<byte> data, ref int index, int subindex)
+        private bool DeserializeBoolean(BitReader bitReader)
         {
-            var b = data.Slice(index, 1)[0];
-            var value = (b & (1 << subindex)) != 0;
-            index += 1;
+            var value = bitReader.ReadBit();
             return value;
         }
 
-        private double DeserializeDouble(in ReadOnlySpan<byte> data, ref int index)
+        private double DeserializeDouble(BitReader bitReader)
         {
-            var value = BitConverter.ToDouble(data.Slice(index, 8));
-            index += 8;
+            var bytes = bitReader.ReadBytes(8);
+            var value = BitConverter.ToDouble(bytes);
             return value;
         }
 
-        private ulong DeserializeUInt64(in ReadOnlySpan<byte> data, ref int index)
+        private ulong DeserializeUInt64(BitReader bitReader)
         {
-            var value = BitConverter.ToUInt64(data.Slice(index, 8));
-            index += 8;
+            var bytes = bitReader.ReadBytes(8);
+            var value = BitConverter.ToUInt64(bytes);
             return value;
         }
 
-        private string DeserializeString(in ReadOnlySpan<byte> data, ref int index)
+        private string DeserializeString(BitReader bitReader)
         {
-            var bytes = data.Slice(index);
-            var length = bytes.IndexOf((byte)0);
+            var length = bitReader.IndexOf((byte)0);
+            var bytes = bitReader.ReadBytes(length);
+            bitReader.ReadBytes(1); // skip the terminator
 
-            var value = Encoding.UTF8.GetString(bytes.Slice(0, length));
-            index += length + 1; // skip the terminator
-
+            var value = Encoding.UTF8.GetString(bytes);
             return value;
         }
 
         private byte[] SerializeType(IotDevice obj)
         {
-            using var stream = new MemoryStream();
+            var bitWriter = new BitWriter();
 
-            SerializeType(stream, obj.Name);
-            SerializeType(stream, obj.Id);
-            SerializeType(stream, obj.StatusMessage);
-            SerializeType(stream, obj.SelfCheckPassed, obj.ServiceModeEnabled);
-            SerializeType(stream, obj.UptimeInSeconds);
-            SerializeType(stream, obj.Pressure.Value);
-            SerializeType(stream, obj.Temperature.Value);
-            SerializeType(stream, obj.Distance.Value);
+            SerializeType(bitWriter, obj.Name);
+            SerializeType(bitWriter, obj.Id);
+            SerializeType(bitWriter, obj.StatusMessage);
+            SerializeType(bitWriter, obj.SelfCheckPassed);
+            SerializeType(bitWriter, obj.ServiceModeEnabled);
+            SerializeType(bitWriter, obj.UptimeInSeconds);
+            SerializeType(bitWriter, obj.Pressure.Value);
+            SerializeType(bitWriter, obj.Temperature.Value);
+            SerializeType(bitWriter, obj.Distance.Value);
 
-            var bytes = stream.ToArray();
+            var bytes = bitWriter.ToArray();
             return bytes;
         }
 
-        private void SerializeType(Stream stream, string value)
+        private void SerializeType(BitWriter bitWriter, string value)
         {
             var bytes = Encoding.UTF8.GetBytes(value);
-            stream.Write(bytes, 0, bytes.Length);
+            bitWriter.WriteBytes(bytes);
+
+            var x = new BitReader(bitWriter.ToArray());
+            var y = x.ReadBytes(bytes.Length);
+            var z = Encoding.UTF8.GetString(y);
 
             // null terminator
-            stream.WriteByte((byte)0);
+            bitWriter.WriteByte((byte)0);
         }
 
-        private void SerializeType(Stream stream, params bool[] values)
+        private void SerializeType(BitWriter bitWriter, bool value)
         {
-            if (values.Length > 8)
-            {
-                throw new ArgumentException("Only eight values allowed");
-            }
-
-            var value = 0;
-            for (int i = 0; i < values.Length; i++)
-            {
-                if (values[i])
-                {
-                    value |= 1 << i;
-                }
-            }
-
-            stream.WriteByte((byte)value);
+            bitWriter.WriteBit(value);
         }
 
-        private void SerializeType(Stream stream, object value)
+        private void SerializeType(BitWriter bitWriter, object value)
         {
             var bytes = value switch
             {
-                bool b => BitConverter.GetBytes(b),
                 char c => BitConverter.GetBytes(c),
                 double d => BitConverter.GetBytes(d),
                 short s => BitConverter.GetBytes(s),
@@ -154,7 +137,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
                 _ => throw new InvalidOperationException($"Type of {value.GetType()} not supported.")
             };
 
-            stream.Write(bytes, 0, bytes.Length);
+            bitWriter.WriteBytes(bytes);
         }
     }
 }
