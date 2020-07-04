@@ -33,8 +33,12 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             var name = DeserializeString(data, ref index);
             var id = DeserializeString(data, ref index);
             var statusMessage = DeserializeString(data, ref index);
-            var selfCheckPassed = DeserializeBoolean(data, ref index);
-            var serviceModeEnabled = DeserializeBoolean(data, ref index);
+
+            var selfCheckPassed = DeserializeBoolean(data, ref index, 0);
+            index -= 1;
+
+            var serviceModeEnabled = DeserializeBoolean(data, ref index, 1);
+
             var uptimeInSeconds = DeserializeUInt64(data, ref index);
             var pressure = DeserializeDouble(data, ref index);
             var temperature = DeserializeDouble(data, ref index);
@@ -55,9 +59,10 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return instance;
         }
 
-        private bool DeserializeBoolean(in ReadOnlySpan<byte> data, ref int index)
+        private bool DeserializeBoolean(in ReadOnlySpan<byte> data, ref int index, int subindex)
         {
-            var value = BitConverter.ToBoolean(data.Slice(index, 1));
+            var b = data.Slice(index, 1)[0];
+            var value = (b & (1 << subindex)) != 0;
             index += 1;
             return value;
         }
@@ -78,11 +83,11 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
         private string DeserializeString(in ReadOnlySpan<byte> data, ref int index)
         {
-            var length = BitConverter.ToUInt16(data.Slice(index, 2));
-            index += 2;
+            var bytes = data.Slice(index);
+            var length = bytes.IndexOf((byte)0);
 
-            var value = Encoding.UTF8.GetString(data.Slice(index, length));
-            index += length;
+            var value = Encoding.UTF8.GetString(bytes.Slice(0, length));
+            index += length + 1; // skip the terminator
 
             return value;
         }
@@ -94,8 +99,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             SerializeType(stream, obj.Name);
             SerializeType(stream, obj.Id);
             SerializeType(stream, obj.StatusMessage);
-            SerializeType(stream, obj.SelfCheckPassed);
-            SerializeType(stream, obj.ServiceModeEnabled);
+            SerializeType(stream, obj.SelfCheckPassed, obj.ServiceModeEnabled);
             SerializeType(stream, obj.UptimeInSeconds);
             SerializeType(stream, obj.Pressure.Value);
             SerializeType(stream, obj.Temperature.Value);
@@ -108,11 +112,29 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
         private void SerializeType(Stream stream, string value)
         {
             var bytes = Encoding.UTF8.GetBytes(value);
-
-            var lengthBytes = BitConverter.GetBytes((ushort)bytes.Length);
-            stream.Write(lengthBytes, 0, lengthBytes.Length);
-
             stream.Write(bytes, 0, bytes.Length);
+
+            // null terminator
+            stream.WriteByte((byte)0);
+        }
+
+        private void SerializeType(Stream stream, params bool[] values)
+        {
+            if (values.Length > 8)
+            {
+                throw new ArgumentException("Only eight values allowed");
+            }
+
+            var value = 0;
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (values[i])
+                {
+                    value |= 1 << i;
+                }
+            }
+
+            stream.WriteByte((byte)value);
         }
 
         private void SerializeType(Stream stream, object value)
