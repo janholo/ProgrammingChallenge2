@@ -1,17 +1,16 @@
 using System;
-using System.Collections;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.Serialization;
 using System.Text;
 using ProgrammingChallenge2.Model;
 
 namespace ProgrammingChallenge2.Codecs.FlorianBader
 {
+    /// <summary>
+    /// This is an opinionated serializer.
+    /// We do some crazy optimizations here because we know exactly what type we want to serialize.
+    /// 1. We don't serialize the physical value unit because they are fixed
+    /// 2. We optimize boolean values to only use a bit instead of a whole byte
+    /// 3. We reduce the precision of double and ulong
+    /// </summary>
     public class OpinionatedSerializer
     {
         private readonly bool _extremeOptimization;
