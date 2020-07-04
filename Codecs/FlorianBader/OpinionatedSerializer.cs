@@ -14,6 +14,18 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 {
     public class OpinionatedSerializer
     {
+        private readonly bool _extremeOptimization;
+
+        public OpinionatedSerializer(bool extremeOptimization = true)
+        {
+            // if extreme optimizations is turned on it will convert
+            // double to float (8 bytes -> 4 bytes)
+            // ulong to uint (8 bytes -> 4 bytes)
+            // we can only do that because we know the maximum of those values
+            // and don't care about the precision
+            _extremeOptimization = extremeOptimization;
+        }
+
         public byte[] Serialize(IotDevice obj)
         {
             var bytes = SerializeType(obj);
@@ -63,16 +75,35 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
         private double DeserializeDouble(BitReader bitReader)
         {
-            var bytes = bitReader.ReadBytes(8);
-            var value = BitConverter.ToDouble(bytes);
-            return value;
+            if (!_extremeOptimization)
+            {
+                var bytes = bitReader.ReadBytes(8);
+                var value = BitConverter.ToDouble(bytes);
+                return value;
+            }
+            else
+            {
+                var bytes = bitReader.ReadBytes(4);
+                var value = (double)BitConverter.ToSingle(bytes);
+                return value;
+            }
         }
 
         private ulong DeserializeUInt64(BitReader bitReader)
         {
-            var bytes = bitReader.ReadBytes(8);
-            var value = BitConverter.ToUInt64(bytes);
-            return value;
+            if (!_extremeOptimization)
+            {
+                var bytes = bitReader.ReadBytes(8);
+                var value = BitConverter.ToUInt64(bytes);
+                return value;
+            }
+            else
+            {
+                var bytes = bitReader.ReadBytes(4);
+                var value = BitConverter.ToUInt32(bytes);
+                return value;
+
+            }
         }
 
         private string DeserializeString(BitReader bitReader)
@@ -119,6 +150,30 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
         private void SerializeType(BitWriter bitWriter, bool value)
         {
             bitWriter.WriteBit(value);
+        }
+
+        private void SerializeType(BitWriter bitWriter, double value)
+        {
+            if (!_extremeOptimization)
+            {
+                SerializeType(bitWriter, (object)value);
+            }
+            else
+            {
+                SerializeType(bitWriter, (object)((float)value));
+            }
+        }
+
+        private void SerializeType(BitWriter bitWriter, ulong value)
+        {
+            if (!_extremeOptimization)
+            {
+                SerializeType(bitWriter, (object)value);
+            }
+            else
+            {
+                SerializeType(bitWriter, (object)((uint)value));
+            }
         }
 
         private void SerializeType(BitWriter bitWriter, object value)
