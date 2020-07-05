@@ -7,9 +7,11 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
     /// <summary>
     /// This is an opinionated serializer.
     /// We do some crazy optimizations here because we know exactly what type we want to serialize.
-    /// 1. We don't serialize the physical value unit because they are fixed
-    /// 2. We optimize boolean values to only use a bit instead of a whole byte
-    /// 3. We reduce the precision of double and ulong
+    /// 1. We don't serialize the physical value unit because they are fixed (4 bytes + 3 bytes + 2 bytes = 9 bytes)
+    /// 2. We optimize boolean values to only use a bit instead of a whole byte (1 byte)
+    /// 3. We reduce the precision of double and ulong (4 * 4 bytes = 16 bytes)
+    /// 4. We optimize guids by removing the hyphens (4 bytes)
+    /// This gives us 29 bytes less with optimizations for each message
     /// </summary>
     public class OpinionatedSerializer
     {
@@ -50,6 +52,11 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             var pressure = DeserializeDouble(bitReader);
             var temperature = DeserializeDouble(bitReader);
             var distance = DeserializeDouble(bitReader);
+
+            if (_extremeOptimization)
+            {
+                id = Guid.Parse(id).ToString("D");
+            }
 
             var instance = new IotDevice(
                 name,
@@ -119,8 +126,17 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
         {
             var bitWriter = new BitWriter();
 
+            var id = obj.Id;
+            if (_extremeOptimization)
+            {
+                // if it smells like a guid and it looks like a guid
+                // it must be a guid, in that case we can dismiss the hyphens
+                // this saves us 4 bytes
+                id = Guid.Parse(id).ToString("N");
+            }
+
             SerializeType(bitWriter, obj.Name);
-            SerializeType(bitWriter, obj.Id);
+            SerializeType(bitWriter, id);
             SerializeType(bitWriter, obj.StatusMessage);
             SerializeType(bitWriter, obj.SelfCheckPassed);
             SerializeType(bitWriter, obj.ServiceModeEnabled);
