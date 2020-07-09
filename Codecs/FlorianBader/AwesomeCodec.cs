@@ -6,11 +6,11 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 {
     public class AwesomeCodec : IEncoder, IDecoder
     {
-        private readonly OpinionatedSerializer _serializer;
+        private readonly DiffSerializer _serializer;
 
         public AwesomeCodec()
         {
-            _serializer = new OpinionatedSerializer();
+            _serializer = new DiffSerializer();
         }
 
         public byte[] Encode(IotDevice device) => _serializer.Serialize(device);
