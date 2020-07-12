@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text;
 using ProgrammingChallenge2.Model;
 
@@ -39,10 +40,10 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             _statusMessage = BitOperations.GetBit(statusByte, 1) ? _statusMessage : DeserializeString(bitReader, length: 10, onlyCharacters: true);
             _selfCheckPassed = BitOperations.GetBit(statusByte, 2) ? _selfCheckPassed : DeserializeBoolean(bitReader);
             _serviceModeEnabled = BitOperations.GetBit(statusByte, 3) ? _serviceModeEnabled : DeserializeBoolean(bitReader);
-            _uptimeInSeconds = BitOperations.GetBit(statusByte, 4) ? _uptimeInSeconds : DeserializeUInt64(bitReader);
-            _pressure = BitOperations.GetBit(statusByte, 5) ? _pressure : DeserializeDouble(bitReader);
-            _temperature = BitOperations.GetBit(statusByte, 6) ? _temperature : DeserializeDouble(bitReader);
-            _distance = BitOperations.GetBit(statusByte, 7) ? _distance : DeserializeDouble(bitReader);
+            _uptimeInSeconds = BitOperations.GetBit(statusByte, 4) ? _uptimeInSeconds : DeserializeUInt64(bitReader, bitLength: 23);
+            _pressure = BitOperations.GetBit(statusByte, 5) ? _pressure : DeserializeDouble(bitReader, bitLength: 24);
+            _temperature = BitOperations.GetBit(statusByte, 6) ? _temperature : DeserializeDouble(bitReader, bitLength: 27);
+            _distance = BitOperations.GetBit(statusByte, 7) ? _distance : DeserializeDouble(bitReader, bitLength: 30);
 
             _id = Guid.Parse(_id).ToString("D");
 
@@ -72,17 +73,33 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return value;
         }
 
-        private double DeserializeDouble(BitReader bitReader)
+        private double DeserializeDouble(BitReader bitReader, int bitLength)
         {
-            var bytes = bitReader.ReadBytes(4);
-            var value = (double)BitConverter.ToSingle(bytes);
+            var bytes = bitReader.ReadBits(bitLength);
+            var bytes2 = new byte[4];
+
+            for (int i = bytes.Length - 1; i >= 0; i--)
+            {
+                var x = (bytes.Length - 1 - i);
+                bytes2[x] = bytes[i];
+            }
+
+            var value = (double)BitConverter.ToInt32(bytes2) / 1_000_000;
             return value;
         }
 
-        private ulong DeserializeUInt64(BitReader bitReader)
+        private ulong DeserializeUInt64(BitReader bitReader, int bitLength)
         {
-            var bytes = bitReader.ReadBytes(4);
-            var value = BitConverter.ToUInt32(bytes);
+            var bytes = bitReader.ReadBits(bitLength);
+            var bytes2 = new byte[4];
+
+            for (int i = bytes.Length - 1; i >= 0; i--)
+            {
+                var x = (bytes.Length - 1 - i);
+                bytes2[x] = bytes[i];
+            }
+
+            var value = (ulong)BitConverter.ToUInt32(bytes2);
             return value;
         }
 
@@ -141,25 +158,25 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
             if (_uptimeInSeconds != obj.UptimeInSeconds)
             {
-                SerializeType(bitWriter, obj.UptimeInSeconds);
+                SerializeType(bitWriter, obj.UptimeInSeconds, bitLength: 23);
                 _uptimeInSeconds = obj.UptimeInSeconds;
             }
 
             if (!IsEqual(_pressure, obj.Pressure.Value))
             {
-                SerializeType(bitWriter, obj.Pressure.Value);
+                SerializeType(bitWriter, obj.Pressure.Value, bitLength: 24);
                 _pressure = obj.Pressure.Value;
             }
 
             if (!IsEqual(_temperature, obj.Temperature.Value))
             {
-                SerializeType(bitWriter, obj.Temperature.Value);
+                SerializeType(bitWriter, obj.Temperature.Value, bitLength: 27);
                 _temperature = obj.Temperature.Value;
             }
 
             if (!IsEqual(_distance, obj.Distance.Value))
             {
-                SerializeType(bitWriter, obj.Distance.Value);
+                SerializeType(bitWriter, obj.Distance.Value, bitLength: 30);
                 _distance = obj.Distance.Value;
             }
 
@@ -184,33 +201,17 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             bitWriter.WriteBit(value);
         }
 
-        private void SerializeType(BitWriter bitWriter, double value)
+        private void SerializeType(BitWriter bitWriter, double value, int bitLength)
         {
-            SerializeType(bitWriter, (object)((float)value));
+            var number = (int)(value * 1_000_000);
+            var bytes = BitConverter.GetBytes(number).Reverse().ToArray();
+            bitWriter.WriteBits(bytes, bitLength, offset: 32 - bitLength);
         }
 
-        private void SerializeType(BitWriter bitWriter, ulong value)
+        private void SerializeType(BitWriter bitWriter, ulong value, int bitLength)
         {
-            SerializeType(bitWriter, (object)((uint)value));
-        }
-
-        private void SerializeType(BitWriter bitWriter, object value)
-        {
-            var bytes = value switch
-            {
-                char c => BitConverter.GetBytes(c),
-                double d => BitConverter.GetBytes(d),
-                short s => BitConverter.GetBytes(s),
-                int i => BitConverter.GetBytes(i),
-                long l => BitConverter.GetBytes(l),
-                float f => BitConverter.GetBytes(f),
-                ushort s => BitConverter.GetBytes(s),
-                uint i => BitConverter.GetBytes(i),
-                ulong l => BitConverter.GetBytes(l),
-                _ => throw new InvalidOperationException($"Type of {value.GetType()} not supported.")
-            };
-
-            bitWriter.WriteBytes(bytes);
+            var bytes = BitConverter.GetBytes((uint)value).Reverse().ToArray();
+            bitWriter.WriteBits(bytes, bitLength, offset: 32 - bitLength);
         }
     }
 }

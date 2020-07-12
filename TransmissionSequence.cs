@@ -27,7 +27,7 @@ namespace ProgrammingChallenge2
                 {
                     Console.WriteLine();
                     Console.WriteLine("##########################################################");
-                    Console.WriteLine($"Message number: {i+1}");
+                    Console.WriteLine($"Message number: {i + 1}");
                     Console.WriteLine();
 
                     Console.WriteLine("source data:");
@@ -42,7 +42,7 @@ namespace ProgrammingChallenge2
                     Console.WriteLine(decodedData);
                     Console.WriteLine();
 
-                    if(!areEqual)
+                    if (!areEqual)
                     {
                         // run this again to get debug outputs
                         IotDevice.AreEquals(sourceData, decodedData, true);
