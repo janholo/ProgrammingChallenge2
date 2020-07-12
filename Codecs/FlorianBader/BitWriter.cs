@@ -13,9 +13,9 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             _bits = new List<bool>();
         }
 
-        public void WriteByte(byte b)
+        public void WriteByte(byte b, int offset = 0, int bitCount = 8)
         {
-            for (int i = 0; i < 8; i++)
+            for (int i = offset; i < bitCount + offset; i++)
             {
                 var bit = BitOperations.GetBit(b, i);
                 _bits.Add(bit);
@@ -38,6 +38,17 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
         public void WriteBit(bool bit)
         {
             _bits.Add(bit);
+        }
+
+        public void WriteBits(byte[] bytes, int length)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                var byteIndex = i / 8;
+                var bitIndex = i % 8;
+                var bit = BitOperations.GetBit(bytes[byteIndex], bitIndex);
+                _bits.Add(bit);
+            }
         }
 
         public byte[] ToArray()

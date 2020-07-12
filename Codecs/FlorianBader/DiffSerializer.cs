@@ -34,9 +34,9 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
             var statusByte = bitReader.ReadBytes(1)[0];
 
-            _name = BitOperations.GetBit(statusByte, 0) ? _name : DeserializeString(bitReader);
-            _id = BitOperations.GetBit(statusByte, 0) ? _id : DeserializeString(bitReader);
-            _statusMessage = BitOperations.GetBit(statusByte, 1) ? _statusMessage : DeserializeString(bitReader);
+            _name = BitOperations.GetBit(statusByte, 0) ? _name : DeserializeString(bitReader, length: 12);
+            _id = BitOperations.GetBit(statusByte, 0) ? _id : DeserializeString(bitReader, length: 32);
+            _statusMessage = BitOperations.GetBit(statusByte, 1) ? _statusMessage : DeserializeString(bitReader, length: 10);
             _selfCheckPassed = BitOperations.GetBit(statusByte, 2) ? _selfCheckPassed : DeserializeBoolean(bitReader);
             _serviceModeEnabled = BitOperations.GetBit(statusByte, 3) ? _serviceModeEnabled : DeserializeBoolean(bitReader);
             _uptimeInSeconds = BitOperations.GetBit(statusByte, 4) ? _uptimeInSeconds : DeserializeUInt64(bitReader);
@@ -45,6 +45,11 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             _distance = BitOperations.GetBit(statusByte, 7) ? _distance : DeserializeDouble(bitReader);
 
             _id = Guid.Parse(_id).ToString("D");
+
+            if (!_statusMessage.Contains(' '))
+            {
+                _statusMessage = _statusMessage.Substring(0, 3) + " " + _statusMessage.Substring(3, 4) + " " + _statusMessage.Substring(7, 3);
+            }
 
             var instance = new IotDevice(
                 _name,
@@ -81,13 +86,10 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return value;
         }
 
-        private string DeserializeString(BitReader bitReader)
+        private string DeserializeString(BitReader bitReader, int length)
         {
-            var length = bitReader.IndexOf((byte)0);
-            var bytes = bitReader.ReadBytes(length);
-            bitReader.ReadBytes(1); // skip the terminator
-
-            var value = Encoding.UTF8.GetString(bytes);
+            var bytes = bitReader.ReadBytes(length, bitLength: FloEncoding.BitCount);
+            var value = FloEncoding.GetString(bytes);
             return value;
         }
 
@@ -96,9 +98,10 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             var bitWriter = new BitWriter();
 
             var id = Guid.Parse(obj.Id).ToString("N");
+            var statusMessage = obj.StatusMessage.Replace(" ", string.Empty);
 
             bitWriter.WriteBit(string.Equals(obj.Name, _name, StringComparison.Ordinal) && string.Equals(id, _id, StringComparison.Ordinal));
-            bitWriter.WriteBit(string.Equals(obj.StatusMessage, _statusMessage, StringComparison.Ordinal));
+            bitWriter.WriteBit(string.Equals(statusMessage, _statusMessage, StringComparison.Ordinal));
             bitWriter.WriteBit(_selfCheckPassed == obj.SelfCheckPassed);
             bitWriter.WriteBit(_serviceModeEnabled == obj.ServiceModeEnabled);
             bitWriter.WriteBit(_uptimeInSeconds == obj.UptimeInSeconds);
@@ -118,10 +121,10 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
                 _id = id;
             }
 
-            if (!string.Equals(obj.StatusMessage, _statusMessage, StringComparison.Ordinal))
+            if (!string.Equals(statusMessage, _statusMessage, StringComparison.Ordinal))
             {
-                SerializeType(bitWriter, obj.StatusMessage);
-                _statusMessage = obj.StatusMessage;
+                SerializeType(bitWriter, statusMessage);
+                _statusMessage = statusMessage;
             }
 
             if (_selfCheckPassed != obj.SelfCheckPassed)
@@ -172,15 +175,8 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
         private void SerializeType(BitWriter bitWriter, string value)
         {
-            var bytes = Encoding.UTF8.GetBytes(value);
-            bitWriter.WriteBytes(bytes);
-
-            var x = new BitReader(bitWriter.ToArray());
-            var y = x.ReadBytes(bytes.Length);
-            var z = Encoding.UTF8.GetString(y);
-
-            // null terminator
-            bitWriter.WriteByte((byte)0);
+            var bytes = FloEncoding.GetBytes(value);
+            bitWriter.WriteBits(bytes, value.Length * FloEncoding.BitCount);
         }
 
         private void SerializeType(BitWriter bitWriter, bool value)

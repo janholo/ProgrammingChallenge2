@@ -7,31 +7,31 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
         private byte[] _bytes;
         private int _bitIndex;
 
+        public int BitIndex => _bitIndex;
+
         public BitReader(byte[] bytes)
         {
             _bytes = bytes;
             _bitIndex = 0;
         }
 
-        public byte[] ReadBytes(int length)
+        public byte[] ReadBytes(int length, int bitLength = 8)
         {
             var bytes = new byte[length];
-            bytes.Initialize();
 
-            for (int i = 0; i < length * 8; i++)
+            for (int i = 0; i < length; i++)
             {
-                var value = GetCurrentBit();
-                if (value)
-                {
-                    var byteIndex = i / 8;
-                    var bitIndex = i % 8;
-                    BitOperations.SetBit(ref bytes[byteIndex], bitIndex);
-                }
-
-                _bitIndex++;
+                bytes[i] = ReadByte(bitLength);
             }
 
             return bytes;
+        }
+
+        public byte ReadByte(int bitLength = 8)
+        {
+            var b = GetByte(_bitIndex, bitLength);
+            _bitIndex += bitLength;
+            return b;
         }
 
         public bool ReadBit()
@@ -56,10 +56,24 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return -1;
         }
 
-        private byte GetByte(int index)
+        public int IndexOfBit(in byte searchByte, int bitLength = 8)
+        {
+            for (var i = _bitIndex; i < _bytes.Length * 8; i++)
+            {
+                var peekedByte = GetByte(i, bitLength);
+                if (peekedByte == searchByte)
+                {
+                    return _bitIndex;
+                }
+            }
+
+            return -1;
+        }
+
+        private byte GetByte(int index, int bitLength = 8)
         {
             var b = (byte)0;
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < bitLength; i++)
             {
                 var value = GetBit(_bytes, index + i);
                 if (value)
@@ -67,6 +81,9 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
                     BitOperations.SetBit(ref b, i);
                 }
             }
+
+            // shift to right so the value goes from lowest to highest bit
+            b = (byte)(b >> (8 - bitLength));
 
             return b;
         }
