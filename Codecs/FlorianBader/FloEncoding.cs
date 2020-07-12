@@ -4,10 +4,9 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 {
     public static class FloEncoding
     {
-        public const int BitCount = 6;
         private const int StartCharacterIndex = 'a';
 
-        public static string GetString(byte[] bytes)
+        public static string GetString(byte[] bytes, bool onlyCharacters = false)
         {
             var bitReader = new BitReader(bytes);
             var stringBuilder = new StringBuilder();
@@ -16,34 +15,51 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             {
                 var b = bitReader.ReadByte() - 1;
 
-                if (b <= 9)
+                if (onlyCharacters)
                 {
-                    stringBuilder.Append(b);
+                    var c = (char)(StartCharacterIndex + b);
+                    stringBuilder.Append(c);
                 }
                 else
                 {
-                    var c = (char)(StartCharacterIndex + b - 10);
-                    stringBuilder.Append(c);
+                    if (b <= 9)
+                    {
+                        stringBuilder.Append(b);
+                    }
+                    else
+                    {
+                        var c = (char)(StartCharacterIndex + b - 10);
+                        stringBuilder.Append(c);
+                    }
                 }
             }
 
             return stringBuilder.ToString();
         }
 
-        public static byte[] GetBytes(string str)
+        public static byte[] GetBytes(string str, bool onlyCharacters = false)
         {
             var bitWriter = new BitWriter();
             for (int i = 0; i < str.Length; i++)
             {
                 var c = (byte)str[i];
-                if ((c - 48) <= 9)
+
+                if (onlyCharacters)
                 {
-                    bitWriter.WriteByte((byte)(c - 48 + 1), offset: 8 - BitCount, bitCount: BitCount);
+                    var b = (byte)(c - StartCharacterIndex + 1);
+                    bitWriter.WriteByte(b, offset: 3, bitCount: 5);
                 }
                 else
                 {
-                    var b = (byte)(c - StartCharacterIndex + 11);
-                    bitWriter.WriteByte(b, offset: 8 - BitCount, bitCount: BitCount);
+                    if ((c - 48) <= 9)
+                    {
+                        bitWriter.WriteByte((byte)(c - 48 + 1), offset: 2, bitCount: 6);
+                    }
+                    else
+                    {
+                        var b = (byte)(c - StartCharacterIndex + 11);
+                        bitWriter.WriteByte(b, offset: 2, bitCount: 6);
+                    }
                 }
             }
 

@@ -34,9 +34,9 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
             var statusByte = bitReader.ReadBytes(1)[0];
 
-            _name = BitOperations.GetBit(statusByte, 0) ? _name : DeserializeString(bitReader, length: 12);
+            _name = BitOperations.GetBit(statusByte, 0) ? _name : DeserializeString(bitReader, length: 12, onlyCharacters: true);
             _id = BitOperations.GetBit(statusByte, 0) ? _id : DeserializeString(bitReader, length: 32);
-            _statusMessage = BitOperations.GetBit(statusByte, 1) ? _statusMessage : DeserializeString(bitReader, length: 10);
+            _statusMessage = BitOperations.GetBit(statusByte, 1) ? _statusMessage : DeserializeString(bitReader, length: 10, onlyCharacters: true);
             _selfCheckPassed = BitOperations.GetBit(statusByte, 2) ? _selfCheckPassed : DeserializeBoolean(bitReader);
             _serviceModeEnabled = BitOperations.GetBit(statusByte, 3) ? _serviceModeEnabled : DeserializeBoolean(bitReader);
             _uptimeInSeconds = BitOperations.GetBit(statusByte, 4) ? _uptimeInSeconds : DeserializeUInt64(bitReader);
@@ -86,10 +86,10 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return value;
         }
 
-        private string DeserializeString(BitReader bitReader, int length)
+        private string DeserializeString(BitReader bitReader, int length, bool onlyCharacters = false)
         {
-            var bytes = bitReader.ReadBytes(length, bitLength: FloEncoding.BitCount);
-            var value = FloEncoding.GetString(bytes);
+            var bytes = bitReader.ReadBytes(length, bitLength: onlyCharacters ? 5 : 6);
+            var value = FloEncoding.GetString(bytes, onlyCharacters);
             return value;
         }
 
@@ -111,7 +111,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
             if (!string.Equals(obj.Name, _name, StringComparison.Ordinal))
             {
-                SerializeType(bitWriter, obj.Name);
+                SerializeType(bitWriter, obj.Name, onlyCharacters: true);
                 _name = obj.Name;
             }
 
@@ -123,7 +123,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
             if (!string.Equals(statusMessage, _statusMessage, StringComparison.Ordinal))
             {
-                SerializeType(bitWriter, statusMessage);
+                SerializeType(bitWriter, statusMessage, onlyCharacters: true);
                 _statusMessage = statusMessage;
             }
 
@@ -173,10 +173,10 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return Math.Abs(lhs - rhs) <= difference;
         }
 
-        private void SerializeType(BitWriter bitWriter, string value)
+        private void SerializeType(BitWriter bitWriter, string value, bool onlyCharacters = false)
         {
-            var bytes = FloEncoding.GetBytes(value);
-            bitWriter.WriteBits(bytes, value.Length * FloEncoding.BitCount);
+            var bytes = FloEncoding.GetBytes(value, onlyCharacters);
+            bitWriter.WriteBits(bytes, value.Length * (onlyCharacters ? 5 : 6));
         }
 
         private void SerializeType(BitWriter bitWriter, bool value)
