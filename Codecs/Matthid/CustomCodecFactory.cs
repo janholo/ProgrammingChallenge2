@@ -32,7 +32,7 @@ namespace ProgrammingChallenge2.Codecs.Matthid
     // - Do not send unit strings
     // - Send float instead of double
     // - Guid as bytes
-    // - Send uptime increment as int (2 bytes for low numbers)
+    // - (optional) Send uptime increment as int (2 bytes for low numbers)
     // - (optional) Msg & ID as always the same, so only send the first time and null otherwise.
     // - (optional) Improve string encoding
     // - (optional) Remove spaces

@@ -10,7 +10,7 @@ namespace ProgrammingChallenge2
         {
             var source = new DataSource();
 
-            var codecFactory = new Codecs.FlorianBader.AwesomeCodecFactory();
+            var codecFactory = new Codecs.Matthid.CustomCodecFactory();
 
             var seq = new TransmissionSequence();
 
