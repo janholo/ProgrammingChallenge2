@@ -7,7 +7,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
     public class DiffSerializer
     {
         private string _name;
-        private string _id;
+        private Guid? _id;
         private string _statusMessage;
         private bool _selfCheckPassed;
         private bool _serviceModeEnabled;
@@ -32,19 +32,15 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
         {
             var bitReader = new BitReader(data);
 
-            var statusByte = bitReader.ReadBytes(1)[0];
-
-            _name = BitOperations.GetBit(statusByte, 0) ? _name : DeserializeString(bitReader, length: 12, onlyCharacters: true);
-            _id = BitOperations.GetBit(statusByte, 0) ? _id : DeserializeString(bitReader, length: 32);
-            _statusMessage = BitOperations.GetBit(statusByte, 1) ? _statusMessage : DeserializeString(bitReader, length: 10, onlyCharacters: true);
-            _selfCheckPassed = BitOperations.GetBit(statusByte, 2) ? _selfCheckPassed : DeserializeBoolean(bitReader);
-            _serviceModeEnabled = BitOperations.GetBit(statusByte, 3) ? _serviceModeEnabled : DeserializeBoolean(bitReader);
-            _uptimeInSeconds = BitOperations.GetBit(statusByte, 4) ? _uptimeInSeconds : DeserializeUInt64(bitReader);
-            _pressure = BitOperations.GetBit(statusByte, 5) ? _pressure : DeserializeDouble(bitReader);
-            _temperature = BitOperations.GetBit(statusByte, 6) ? _temperature : DeserializeDouble(bitReader);
-            _distance = BitOperations.GetBit(statusByte, 7) ? _distance : DeserializeDouble(bitReader);
-
-            _id = Guid.Parse(_id).ToString("D");
+            _name = _name is object ? _name : DeserializeString(bitReader, length: 12, onlyCharacters: true);
+            _id = _id is object ? _id : DeserializeGuid(bitReader);
+            _statusMessage = bitReader.ReadBit() ? _statusMessage : DeserializeString(bitReader, length: 10, onlyCharacters: true);
+            _selfCheckPassed = bitReader.ReadBit() ? _selfCheckPassed : DeserializeBoolean(bitReader);
+            _serviceModeEnabled = bitReader.ReadBit() ? _serviceModeEnabled : DeserializeBoolean(bitReader);
+            _uptimeInSeconds = _uptimeInSeconds + DeserializeUInt64(bitReader);
+            _pressure = bitReader.ReadBit() ? _pressure : DeserializeDouble(bitReader);
+            _temperature = bitReader.ReadBit() ? _temperature : DeserializeDouble(bitReader);
+            _distance = bitReader.ReadBit() ? _distance : DeserializeDouble(bitReader);
 
             if (!_statusMessage.Contains(' '))
             {
@@ -53,7 +49,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
             var instance = new IotDevice(
                 _name,
-                _id,
+                _id?.ToString("N") ?? string.Empty,
                 _statusMessage,
                 _selfCheckPassed,
                 _serviceModeEnabled,
@@ -64,6 +60,12 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             );
 
             return instance;
+        }
+
+        private Guid? DeserializeGuid(BitReader bitReader)
+        {
+            var value = bitReader.ReadBytes(16);
+            return new Guid(value);
         }
 
         private bool DeserializeBoolean(BitReader bitReader)
@@ -97,14 +99,12 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
         {
             var bitWriter = new BitWriter();
 
-            var id = Guid.Parse(obj.Id).ToString("N");
+            var id = Guid.Parse(obj.Id);
             var statusMessage = obj.StatusMessage.Replace(" ", string.Empty);
 
-            bitWriter.WriteBit(string.Equals(obj.Name, _name, StringComparison.Ordinal) && string.Equals(id, _id, StringComparison.Ordinal));
             bitWriter.WriteBit(string.Equals(statusMessage, _statusMessage, StringComparison.Ordinal));
             bitWriter.WriteBit(_selfCheckPassed == obj.SelfCheckPassed);
             bitWriter.WriteBit(_serviceModeEnabled == obj.ServiceModeEnabled);
-            bitWriter.WriteBit(_uptimeInSeconds == obj.UptimeInSeconds);
             bitWriter.WriteBit(IsEqual(_pressure, obj.Pressure.Value));
             bitWriter.WriteBit(IsEqual(_temperature, obj.Temperature.Value));
             bitWriter.WriteBit(IsEqual(_distance, obj.Distance.Value));
@@ -115,11 +115,8 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
                 _name = obj.Name;
             }
 
-            if (!string.Equals(id, _id, StringComparison.Ordinal))
-            {
-                SerializeType(bitWriter, id);
-                _id = id;
-            }
+            SerializeType(bitWriter, id);
+            _id = id;
 
             if (!string.Equals(statusMessage, _statusMessage, StringComparison.Ordinal))
             {
@@ -139,11 +136,8 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
                 _serviceModeEnabled = obj.ServiceModeEnabled;
             }
 
-            if (_uptimeInSeconds != obj.UptimeInSeconds)
-            {
-                SerializeType(bitWriter, obj.UptimeInSeconds);
-                _uptimeInSeconds = obj.UptimeInSeconds;
-            }
+            SerializeType(bitWriter, obj.UptimeInSeconds - _uptimeInSeconds);
+            _uptimeInSeconds = obj.UptimeInSeconds;
 
             if (!IsEqual(_pressure, obj.Pressure.Value))
             {
@@ -207,6 +201,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
                 ushort s => BitConverter.GetBytes(s),
                 uint i => BitConverter.GetBytes(i),
                 ulong l => BitConverter.GetBytes(l),
+                Guid g => g.ToByteArray(),
                 _ => throw new InvalidOperationException($"Type of {value.GetType()} not supported.")
             };
 
