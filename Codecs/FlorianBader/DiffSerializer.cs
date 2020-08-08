@@ -88,7 +88,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return value;
         }
 
-        private string DeserializeString(BitReader bitReader, int length, bool onlyCharacters = false)
+        private string giDeserializeString(BitReader bitReader, int length, bool onlyCharacters = false)
         {
             var bytes = bitReader.ReadBytes(length, bitLength: onlyCharacters ? 5 : 6);
             var value = FloEncoding.GetString(bytes, onlyCharacters);
