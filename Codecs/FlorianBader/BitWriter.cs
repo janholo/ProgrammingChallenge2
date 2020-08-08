@@ -40,9 +40,9 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             _bits.Add(bit);
         }
 
-        public void WriteBits(byte[] bytes, int length)
+        public void WriteBits(byte[] bytes, int length, int offset = 0)
         {
-            for (int i = 0; i < length; i++)
+            for (int i = offset; i < length + offset; i++)
             {
                 var byteIndex = i / 8;
                 var bitIndex = i % 8;

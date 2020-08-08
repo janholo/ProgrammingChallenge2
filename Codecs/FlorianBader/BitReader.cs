@@ -15,6 +15,27 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             _bitIndex = 0;
         }
 
+        public byte[] ReadBits(int length)
+        {
+            var bytes = new byte[length / 8 + 1];
+            var offset = bytes.Length * 8 - length;
+
+            for (int i = bytes.Length * 8 - 1; i >= offset; i--)
+            {
+                var byteIndex = i / 8;
+                var bitIndex = i % 8;
+
+                var value = GetBit(_bytes, _bitIndex + i - offset);
+                if (value)
+                {
+                    BitOperations.SetBit(ref bytes[byteIndex], bitIndex);
+                }
+            }
+
+            _bitIndex += length;
+            return bytes;
+        }
+
         public byte[] ReadBytes(int length, int bitLength = 8)
         {
             var bytes = new byte[length];

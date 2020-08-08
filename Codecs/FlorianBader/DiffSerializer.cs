@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text;
 using ProgrammingChallenge2.Model;
 
@@ -32,15 +33,20 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
         {
             var bitReader = new BitReader(data);
 
-            _name = _name is object ? _name : DeserializeString(bitReader, length: 12, onlyCharacters: true);
+            var statusMessageChanged = bitReader.ReadBit();
+            var pressureChanged = bitReader.ReadBit();
+            var temperatureChanged = bitReader.ReadBit();
+            var distanceChanged = bitReader.ReadBit();
+
+            _name = _name is object ? _name : DeserializeString(bitReader, length: 12);
             _id = _id is object ? _id : DeserializeGuid(bitReader);
-            _statusMessage = bitReader.ReadBit() ? _statusMessage : DeserializeString(bitReader, length: 10, onlyCharacters: true);
-            _selfCheckPassed = bitReader.ReadBit() ? _selfCheckPassed : DeserializeBoolean(bitReader);
-            _serviceModeEnabled = bitReader.ReadBit() ? _serviceModeEnabled : DeserializeBoolean(bitReader);
-            _uptimeInSeconds = _uptimeInSeconds + DeserializeUInt64(bitReader);
-            _pressure = bitReader.ReadBit() ? _pressure : DeserializeDouble(bitReader);
-            _temperature = bitReader.ReadBit() ? _temperature : DeserializeDouble(bitReader);
-            _distance = bitReader.ReadBit() ? _distance : DeserializeDouble(bitReader);
+            _statusMessage = statusMessageChanged ? _statusMessage : DeserializeString(bitReader, length: 10);
+            _selfCheckPassed = DeserializeBoolean(bitReader);
+            _serviceModeEnabled = DeserializeBoolean(bitReader);
+            _uptimeInSeconds = _uptimeInSeconds + DeserializeUInt64(bitReader, bitLength: 7);
+            _pressure = pressureChanged ? _pressure : DeserializeDouble(bitReader);
+            _temperature = temperatureChanged ? _temperature : DeserializeDouble(bitReader);
+            _distance = distanceChanged ? _distance : DeserializeDouble(bitReader);
 
             if (!_statusMessage.Contains(' '))
             {
@@ -49,7 +55,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
             var instance = new IotDevice(
                 _name,
-                _id?.ToString("N") ?? string.Empty,
+                _id?.ToString("D") ?? string.Empty,
                 _statusMessage,
                 _selfCheckPassed,
                 _serviceModeEnabled,
@@ -81,14 +87,22 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return value;
         }
 
-        private ulong DeserializeUInt64(BitReader bitReader)
+        private ulong DeserializeUInt64(BitReader bitReader, int bitLength)
         {
-            var bytes = bitReader.ReadBytes(4);
-            var value = BitConverter.ToUInt32(bytes);
+            var bytes = bitReader.ReadBits(bitLength);
+            var bytes2 = new byte[4];
+
+            for (int i = bytes.Length - 1; i >= 0; i--)
+            {
+                var x = (bytes.Length - 1 - i);
+                bytes2[x] = bytes[i];
+            }
+
+            var value = (ulong)BitConverter.ToUInt32(bytes2);
             return value;
         }
 
-        private string giDeserializeString(BitReader bitReader, int length, bool onlyCharacters = false)
+        private string DeserializeString(BitReader bitReader, int length, bool onlyCharacters = true)
         {
             var bytes = bitReader.ReadBytes(length, bitLength: onlyCharacters ? 5 : 6);
             var value = FloEncoding.GetString(bytes, onlyCharacters);
@@ -103,40 +117,33 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             var statusMessage = obj.StatusMessage.Replace(" ", string.Empty);
 
             bitWriter.WriteBit(string.Equals(statusMessage, _statusMessage, StringComparison.Ordinal));
-            bitWriter.WriteBit(_selfCheckPassed == obj.SelfCheckPassed);
-            bitWriter.WriteBit(_serviceModeEnabled == obj.ServiceModeEnabled);
             bitWriter.WriteBit(IsEqual(_pressure, obj.Pressure.Value));
             bitWriter.WriteBit(IsEqual(_temperature, obj.Temperature.Value));
             bitWriter.WriteBit(IsEqual(_distance, obj.Distance.Value));
 
             if (!string.Equals(obj.Name, _name, StringComparison.Ordinal))
             {
-                SerializeType(bitWriter, obj.Name, onlyCharacters: true);
+                SerializeType(bitWriter, obj.Name);
                 _name = obj.Name;
             }
 
-            SerializeType(bitWriter, id);
-            _id = id;
+            if (id != _id)
+            {
+                SerializeType(bitWriter, id);
+                _id = id;
+            }
 
             if (!string.Equals(statusMessage, _statusMessage, StringComparison.Ordinal))
             {
-                SerializeType(bitWriter, statusMessage, onlyCharacters: true);
+                SerializeType(bitWriter, statusMessage);
                 _statusMessage = statusMessage;
             }
 
-            if (_selfCheckPassed != obj.SelfCheckPassed)
-            {
-                SerializeType(bitWriter, obj.SelfCheckPassed);
-                _selfCheckPassed = obj.SelfCheckPassed;
-            }
+            SerializeType(bitWriter, obj.SelfCheckPassed);
 
-            if (_serviceModeEnabled != obj.ServiceModeEnabled)
-            {
-                SerializeType(bitWriter, obj.ServiceModeEnabled);
-                _serviceModeEnabled = obj.ServiceModeEnabled;
-            }
+            SerializeType(bitWriter, obj.ServiceModeEnabled);
 
-            SerializeType(bitWriter, obj.UptimeInSeconds - _uptimeInSeconds);
+            SerializeType(bitWriter, obj.UptimeInSeconds - _uptimeInSeconds, bitLength: 7);
             _uptimeInSeconds = obj.UptimeInSeconds;
 
             if (!IsEqual(_pressure, obj.Pressure.Value))
@@ -167,10 +174,10 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
             return Math.Abs(lhs - rhs) <= difference;
         }
 
-        private void SerializeType(BitWriter bitWriter, string value, bool onlyCharacters = false)
+        private void SerializeType(BitWriter bitWriter, string value)
         {
-            var bytes = FloEncoding.GetBytes(value, onlyCharacters);
-            bitWriter.WriteBits(bytes, value.Length * (onlyCharacters ? 5 : 6));
+            var bytes = FloEncoding.GetBytes(value, onlyCharacters: true);
+            bitWriter.WriteBits(bytes, value.Length * 5);
         }
 
         private void SerializeType(BitWriter bitWriter, bool value)
@@ -180,31 +187,19 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
         private void SerializeType(BitWriter bitWriter, double value)
         {
-            SerializeType(bitWriter, (object)((float)value));
+            var bytes = BitConverter.GetBytes((float)value);
+            bitWriter.WriteBytes(bytes);
         }
 
-        private void SerializeType(BitWriter bitWriter, ulong value)
+        private void SerializeType(BitWriter bitWriter, ulong value, int bitLength)
         {
-            SerializeType(bitWriter, (object)((uint)value));
+            var bytes = BitConverter.GetBytes((uint)value).Reverse().ToArray();
+            bitWriter.WriteBits(bytes, bitLength, offset: 32 - bitLength);
         }
 
-        private void SerializeType(BitWriter bitWriter, object value)
+        private void SerializeType(BitWriter bitWriter, Guid value)
         {
-            var bytes = value switch
-            {
-                char c => BitConverter.GetBytes(c),
-                double d => BitConverter.GetBytes(d),
-                short s => BitConverter.GetBytes(s),
-                int i => BitConverter.GetBytes(i),
-                long l => BitConverter.GetBytes(l),
-                float f => BitConverter.GetBytes(f),
-                ushort s => BitConverter.GetBytes(s),
-                uint i => BitConverter.GetBytes(i),
-                ulong l => BitConverter.GetBytes(l),
-                Guid g => g.ToByteArray(),
-                _ => throw new InvalidOperationException($"Type of {value.GetType()} not supported.")
-            };
-
+            var bytes = value.ToByteArray();
             bitWriter.WriteBytes(bytes);
         }
     }
