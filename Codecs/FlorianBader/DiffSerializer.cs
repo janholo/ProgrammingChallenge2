@@ -82,7 +82,7 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
         private double DeserializeDouble(BitReader bitReader)
         {
-            var bytes = bitReader.ReadBytes(4);
+            var bytes = bitReader.ReadBits(31).Reverse().ToArray();
             var value = (double)BitConverter.ToSingle(bytes);
             return value;
         }
@@ -187,8 +187,8 @@ namespace ProgrammingChallenge2.Codecs.FlorianBader
 
         private void SerializeType(BitWriter bitWriter, double value)
         {
-            var bytes = BitConverter.GetBytes((float)value);
-            bitWriter.WriteBytes(bytes);
+            var bytes = BitConverter.GetBytes((float)value).Reverse().ToArray();
+            bitWriter.WriteBits(bytes, length: 31, offset: 1); // cut off sign bit because it's always positive
         }
 
         private void SerializeType(BitWriter bitWriter, ulong value, int bitLength)
