@@ -52,3 +52,9 @@ The competition ends at 27. August 2020.
 After the competition ends the solution which manages to get the data across with the minimum amount of bytes wins!
 
 Happy coding!
+
+## Results
+| Name | Result |
+|------------------------------------------|----------------------------------|
+Result for Codec 'SoFarTheBestCodec by Sebastian Roether' | Total bytes transmitted: 19161845
+Result for Codec 'JsonCodec by Jan Reinhardt':            | Total bytes transmitted: 28658748
