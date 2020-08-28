@@ -1,0 +1,33 @@
+syntax = "proto3";
+package ProgrammingChallenge2.Codecs.matthid.Protobuf;
+
+message StupidPhysicalValue {
+    double Value = 1;
+    string Unit = 2;
+}
+
+message StupidIoTDevice {
+    string Name = 1;
+    string Id = 2;
+    string StatusMessage = 3;
+    bool SelfCheckPassed = 4;
+    bool ServiceModeEnabled = 5;
+    uint64 UptimeInSeconds = 6;
+    StupidPhysicalValue Pressure = 7;
+    StupidPhysicalValue Temperature = 8;
+    StupidPhysicalValue Distance = 9;
+}
+
+
+message OptimizedIoTDevice {
+    bytes Name = 1;
+    bytes Id = 2;
+    bytes StatusMessage = 3;
+    bool SelfCheckPassed = 4;
+    bool ServiceModeEnabled = 5;
+    uint32 AdditionalUptimeInSeconds = 6;
+    float Pressure = 7;
+    float Temperature = 8;
+    float Distance = 9;
+}
+
