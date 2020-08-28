@@ -11,12 +11,15 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
     */
     public class EntropyMaximizingCodec : IEncoder, IDecoder
     {
-        private StatelessCodec _codec = new StatelessCodec();
-        private CompressionBuffer _encodingPredictor;
-        private CompressionBuffer _decodingPredictor;
+        private StatelessCodec _decoder = new StatelessCodec();
+        private StatelessCodec _encoder = new StatelessCodec();
+        
+        public CompressionBuffer _encodingPredictor;
+        public CompressionBuffer _decodingPredictor;
         private IotDevice _lastEncodedDevice;
         private IotDevice _lastDecodedDevice;
         private bool _debug;
+        private bool sent;
 
         public EntropyMaximizingCodec(bool debug = false)
         {
@@ -25,12 +28,16 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             _decodingPredictor = new CompressionBuffer(debug);
         }
 
+        public static int a,b;
+
         public byte[] Encode(IotDevice device)
         {
+            // _encodingPredictor.Dump();
+            // Random.Dump();
+
             var clone = _encodingPredictor.Clone();
             compress(_encodingPredictor, _lastEncodedDevice, device);
-
-            if(_debug) Console.WriteLine(_encodingPredictor.P());
+            _encodingPredictor.CheckMask();
 
             var x = decompress(clone, _lastEncodedDevice, true);
 
@@ -38,10 +45,14 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             // Wenn beim Komprimieren Rundungsfehler auftreten, dann nehmen wir einfach den Stateless Codec
             if(x != null && IotDevice.AreEquals(device, x, _debug))
             {
+                a++;
+                _encodingPredictor = clone;
+                //Console.WriteLine("0");
                 return new byte[0];
             }
             else
             {
+                b++;
                 if(_debug)
                 {
                     var text2 = JsonConvert.SerializeObject(x);
@@ -49,9 +60,17 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
 
                     var text3 = JsonConvert.SerializeObject(device);
                     Console.WriteLine(text3);
-                }
 
-                return _codec.Encode(device);
+                    var align = _encodingPredictor.Align();
+                    Console.WriteLine("##########################################################################");
+                    _encodingPredictor.Dump();
+                    ProgrammingChallenge2.Random.Dump(align);
+
+                }
+                
+                var bytes = _encoder.Encode(device, sent ? _lastEncodedDevice : null);
+                sent = true;
+                return bytes;
             }
         }
 
@@ -73,10 +92,10 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             predictor.miss();
             predictor.miss();
 
-            predictor.observe(device.Pressure.Value / 5.0);
-            predictor.observe(device.Temperature.Value / 100.0);
-            //predictor.observe(device.Distance.Value / 1000.0);
-            predictor.miss();
+            predictor.observe(device.Pressure.Value, 5);
+            predictor.observe(device.Temperature.Value, 100);
+            predictor.observe(device.Distance.Value, 1000);
+            //predictor.miss();
         }
 
         private IotDevice decompress(CompressionBuffer predictor, IotDevice lastDevice, bool doMessage)
@@ -112,7 +131,7 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
         {
             try
             {
-                var device = _codec.Decode(data);
+                var device = _decoder.Decode(data, _lastDecodedDevice);
                 compress(_decodingPredictor, _lastDecodedDevice, device);
                 _lastDecodedDevice = device;
                 return device;

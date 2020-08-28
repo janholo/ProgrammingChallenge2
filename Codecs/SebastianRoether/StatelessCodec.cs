@@ -12,10 +12,15 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             ServiceModeEnabled = 2,
             UseDefaultPressureUnit = 4,
             UseDefaultTemperatureUnit = 8,
-            UseDefaultDistanceUnit = 16
+            UseDefaultDistanceUnit = 16,
+            IncludeMessage = 32
         }
 
-        public byte[] Encode(IotDevice device)
+        public byte[] Encode(IotDevice device) {
+            return Encode(device, null);
+        }
+
+        public byte[] Encode(IotDevice device, IotDevice lastState = null)
         {
             using var memoryStream = new MemoryStream();
             using var writer = new BinaryWriter(memoryStream);
@@ -25,14 +30,15 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
                 (device.ServiceModeEnabled ? MessageFlags.ServiceModeEnabled : MessageFlags.None) |
                 (device.Pressure.Unit == "bar" ? MessageFlags.UseDefaultPressureUnit : MessageFlags.None) |
                 (device.Temperature.Unit == "°C" ? MessageFlags.UseDefaultTemperatureUnit : MessageFlags.None) |
-                (device.Distance.Unit == "m" ? MessageFlags.UseDefaultDistanceUnit : MessageFlags.None);
+                (device.Distance.Unit == "m" ? MessageFlags.UseDefaultDistanceUnit : MessageFlags.None) |
+                (lastState?.StatusMessage != device.StatusMessage ? MessageFlags.IncludeMessage : MessageFlags.None);
 
             writer.Write((byte)messageFlags);
-            writer.Write(device.Name);
-            writer.Write(Guid.Parse(device.Id).ToByteArray());
+            if(lastState == null) writer.Write(device.Name);
+            if(lastState == null) writer.Write(Guid.Parse(device.Id).ToByteArray());
 
             // Ja, man braucht nur ein 5 Bit Alphabet. Und die Leerzeichen kann man auch weglassen wenn man Annahmen trifft.
-            writer.Write(device.StatusMessage);
+            if(true || CheckFlag(MessageFlags.IncludeMessage, messageFlags)) writer.Write(device.StatusMessage); // Matthid.ImprovedLowerCaseStringEncoder.EncodeString(device.StatusMessage.Replace(" ", "")));
             writer.Write(device.UptimeInSeconds);
 
             // Leider kann man nicht einfach den double in einen float oder sogar einen 2-Byte Wert konvertieren ohne große Annahmen zu treffen
@@ -49,7 +55,11 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             return memoryStream.ToArray();
         }
 
-        public IotDevice Decode(byte[] data)
+        public IotDevice Decode(byte[] data) {
+            return Decode(data, null);
+        }
+
+        public IotDevice Decode(byte[] data, IotDevice lastState = null)
         {
             using var memoryStream = new MemoryStream(data);
             using var reader = new BinaryReader(memoryStream);
@@ -57,9 +67,9 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             var messageFlags = (MessageFlags)reader.ReadByte();
 
             var iotDevice = new IotDevice(
-                reader.ReadString(),
-                new Guid(reader.ReadBytes(16)).ToString(),
-                reader.ReadString(),
+                lastState == null ? reader.ReadString() : lastState.Name,
+                lastState == null ? new Guid(reader.ReadBytes(16)).ToString() : lastState.Id,
+                /*CheckFlag(MessageFlags.IncludeMessage, messageFlags) ?*/ reader.ReadString(),/* : lastState.StatusMessage,*/ // Beautify(Matthid.ImprovedLowerCaseStringEncoder.DecodeBytes(reader.ReadBytes(7))): lastState.StatusMessage,
                 CheckFlag(MessageFlags.SelfCheckPassed, messageFlags),
                 CheckFlag(MessageFlags.ServiceModeEnabled, messageFlags),
                 reader.ReadUInt64(),
@@ -73,6 +83,11 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
         private bool CheckFlag(MessageFlags flag, MessageFlags messageHeader)
         {
             return (messageHeader & flag) == flag;
+        }
+
+        private string Beautify(string msg)
+        {
+            return $"{msg.Substring(0, 3)} {msg.Substring(3, 4)} {msg.Substring(7)}";
         }
     }
 }

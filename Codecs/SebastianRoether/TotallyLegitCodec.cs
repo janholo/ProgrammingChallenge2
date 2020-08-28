@@ -14,7 +14,7 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
 
         public IotDevice Decode(byte[] data)
         {
-            return new IotDevice("YOLO :-)", null, null, false, false, 0UL, new PhysicalValue(0, null), new PhysicalValue(0, null), new PhysicalValue(0, null));
+            return new IotDevice("YOLO", null, null, false, false, 0UL, new PhysicalValue(0, null), new PhysicalValue(0, null), new PhysicalValue(0, null));
         }
     }
 }

@@ -1,6 +1,6 @@
 namespace ProgrammingChallenge2.Codecs.SebastianRoether 
 {
-    public class OracleCodecFactory : ICodecFactory
+    public class EntropyMaximizingCodecFactory : ICodecFactory
     {
         public string Name => "Codec that maximizes entropy per message by Sebastian Roether";
 
