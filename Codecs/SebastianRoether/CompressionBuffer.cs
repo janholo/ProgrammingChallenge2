@@ -5,177 +5,128 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
 
     public class CompressionBuffer
     {
-        private const int MBIG = Int32.MaxValue;
-        private int inext;
-        private int inextp;
-        public int?[] SeedArray = new int?[56];
-        public bool[] Mask = new bool[56];
+        private int _p;
+        private int _offset;
+        private int?[] Buffer = new int?[1024];
+        private bool[] Mask = new bool[1024];
         private bool debug;
-
-        private const int MSEED = 161803398;
 
         public CompressionBuffer(bool debug)
         {
-            inext = 0;
-            inextp = 21;
+            _p = 0;
+            _offset = 21;
             this.debug = debug;
         }
 
-        internal CompressionBuffer(int inext, int inextp, int?[] buffer, bool[] maskArray, bool debug)
+        internal CompressionBuffer(int p, int offset, int?[] buffer, bool[] maskArray, bool debug)
         {
-            this.inext = inext;
-            this.inextp = inextp;
-            this.SeedArray = buffer;
-            this.Mask = maskArray;
+            _p = p;
+            _offset = offset;
+            Buffer = buffer;
+            Mask = maskArray;
             this.debug = debug;
         }
 
         public CompressionBuffer Clone()
         {
-            var copyArray = new int?[SeedArray.Length];
+            var copyArray = new int?[Buffer.Length];
             var maskClone = new bool[Mask.Length];
-            Array.Copy(SeedArray, copyArray, SeedArray.Length);
+            Array.Copy(Buffer, copyArray, Buffer.Length);
             Array.Copy(Mask, maskClone, Mask.Length);
-            return new CompressionBuffer(inext, inextp, copyArray, maskClone, debug);
+            return new CompressionBuffer(_p, _offset, copyArray, maskClone, debug);
         }
 
-        protected virtual double? Sample()
-        {
-            return (InternalSample() * (1.0 / MBIG));
-        }
-
-        private int? InternalSample()
+        private int? InternalDecompressAndUnfold()
         {
             int? retVal;
-            int locINext = inext;
-            int locINextp = inextp;
+            int p = _p;
+            int offset = _offset;
 
-            if (++locINext >= 56) locINext = 1;
-            if (++locINextp >= 56) locINextp = 1;
+            if (++p >= 56) p = 1;
+            if (++offset >= 56) offset = 1;
 
-            retVal = SeedArray[locINext] - SeedArray[locINextp];
+            retVal = Buffer[p] - Buffer[offset];
 
-            if (retVal == MBIG) retVal--;
-            if (retVal < 0) retVal += MBIG;
+            if (retVal == Int32.MaxValue) retVal--;
+            if (retVal < 0) retVal += Int32.MaxValue;
 
-            if(debug) Console.WriteLine("PREDICT Index " + locINext + "=" + retVal);
-            SeedArray[locINext] = retVal;
+            Buffer[p] = retVal;
 
-            Mask[locINext] &= Mask[locINextp];
+            Mask[p] &= Mask[offset];
 
-            inext = locINext;
-            inextp = locINextp;
+            _p = p;
+            _offset = offset;
 
             return retVal;
         }
 
-        public void observe(double value, int check)
+        public void CompressAndFold(double value, int check)
         {
-            internalObserve((int)((double)(value / check) * MBIG), check);
+            InternalCompressAndFold((int)((double)(value / check) * Int32.MaxValue), check);
         }
 
-        public void miss()
+        public void CompressAndFold(int bytes)
         {
-            internalObserve(null, 0);
-        }
-
-        public int P()
-        {
-            return SeedArray.Count(x => x == null);
-        }
-                public int Q()
-        {
-            return Mask.Count(x => x == true);
-        }
-
-        public void Dump()
-        {
-            Console.WriteLine("--------BUFFER---------");
-
-            for (int i = 0; i < SeedArray.Length; i++)
+            for(int i = 0; i < bytes; i++)
             {
-                Console.Write(SeedArray[i] + ",");
+                InternalCompressAndFold(null, 0);
             }
-            Console.WriteLine();
-            for (int i = 0; i < SeedArray.Length; i++)
-            {
-                Console.Write(Mask[i] + ",");
-            }
-
-            Console.WriteLine();
-            Console.WriteLine(SeedArray.Count(x => x == null));
-            Console.WriteLine(Mask.Count(x => x == true));
         }
 
-        private void internalObserve(int? value, int check)
+        private void InternalCompressAndFold(int? value, int check)
         {
             int retVal;
-            int locINext = inext;
-            int locINextp = inextp;
+            int lp = _p;
+            int offset = _offset;
 
-            if (++locINext >= 56) locINext = 1;
-            if (++locINextp >= 56) locINextp = 1;
+            if (++lp >= 56) lp = 1;
+            if (++offset >= 56) offset = 1;
 
-            if (SeedArray[locINext] == null || SeedArray[locINextp] == null)
+            if (Buffer[lp] == null || Buffer[offset] == null)
             {
-                SeedArray[locINext] = value;
-                
-                if(debug) Console.WriteLine("SET Index " + locINext + "=" + value);
-                Mask[locINext] = value != null && Magic(value.Value, check); // && Magic(value.Value, 100) && Magic(value.Value, 1000);
-                inext = locINext;
-                inextp = locINextp;
+                Buffer[lp] = value;
+                Mask[lp] = value != null && Magic(value.Value, check);
+                _p = lp;
+                _offset = offset;
             }
             else
             {
-                retVal = SeedArray[locINext].Value - SeedArray[locINextp].Value;
+                retVal = Buffer[lp].Value - Buffer[offset].Value;
 
-                if (retVal == MBIG) retVal--;
-                if (retVal < 0) retVal += MBIG;
+                if (retVal == Int32.MaxValue) retVal--;
+                if (retVal < 0) retVal += Int32.MaxValue;
 
                 if ((retVal != value) && value != null)
                 {
-                    if (debug)
+                    if(!Mask[lp] || !Mask[offset])
                     {
-                        if (Math.Abs((long)retVal - (long)value.Value) > 0)
-                        {
-                            Console.WriteLine("actual value " + retVal + " does not match observation " + value + "(certain=" + (Mask[locINext] && Mask[locINextp]) + "). Other Value:" + SeedArray[locINextp].Value);
-                        }
-                    }
-
-                    // prediction different than observation
-                    if(!Mask[locINext] || !Mask[locINextp])
-                    {
-                        // no certainty, just take value
-                        SeedArray[locINext] = value;
-                        if(debug) Console.WriteLine("SET Index " + locINext + "=" + value + " after prediction mismatch (" + Mask[locINext] + " -> "+ Magic(value.Value, check));
-                        Mask[locINext] = Magic(value.Value, check); // && Magic(value.Value, 100) && Magic(value.Value, 1000);
+                        Buffer[lp] = value;
+                        Mask[lp] = Magic(value.Value, check);
                     }
                     else
                     {
-                        // mismatch but we know better than observation
-                        Mask[locINext] = true;
-                        if(debug) Console.WriteLine("SET Index " + locINext + "=" + retVal + " after prediction mismatch and we know better (was " + SeedArray[locINext] +")");
-                        SeedArray[locINext] = retVal;
+                        Mask[lp] = true;
+                        Buffer[lp] = retVal;
                     }
                 }
                 else
                 {
-                    SeedArray[locINext] = retVal;
-                    Mask[locINext] = (Mask[locINext] && Mask[locINextp]); /*|| (value != null && Magic(value.Value, 5))*/;
+                    Buffer[lp] = retVal;
+                    Mask[lp] = (Mask[lp] && Mask[offset]);
                 }
-                inext = locINext;
-                inextp = locINextp;
+                _p = lp;
+                _offset = offset;
             }
         }
 
-        public virtual int? Next(int maxValue)
+        public virtual int? DecompressSimple()
         {
-            return (int?)(Sample() * maxValue);
+            return (int?)(InternalDecompressAndUnfold() * (1.0 / Int32.MaxValue) * 25);
         }
 
-        public virtual double? NextDouble()
+        public virtual double? Decompress()
         {
-            return Sample();
+            return InternalDecompressAndUnfold() * (1.0 / Int32.MaxValue);;
         }
 
         private bool Magic(int i, int check)
@@ -190,38 +141,6 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             double z = y / check;
             int v = (int)(z * Int32.MaxValue);
             return (v == i);
-        }
-
-        public int Align()
-        {
-            for(int i = 0; i < SeedArray.Length; i++)
-            {
-                for(int j = 0; j < SeedArray.Length; j++)
-                {
-                    if(ProgrammingChallenge2.Random._seedArray[j] == SeedArray[i])
-                    {
-                        return i - j;
-                    }
-                }
-            }
-            return 0;
-        }
-
-        public void CheckMask()
-        {
-            var x = Align();
-
-            for(int i = 0; i < SeedArray.Length; i++)
-            {
-                if((ProgrammingChallenge2.Random._seedArray[((i - x - 1 + 55) % 55) + 1] != SeedArray[i]) && Mask[i])
-                {
-                    Console.WriteLine("******************************************************");
-                    Console.WriteLine(ProgrammingChallenge2.Random._seedArray[((i - x - 1 + 55) % 55) + 1] + "|" + SeedArray[i]);
-                    Dump();
-                    ProgrammingChallenge2.Random.Dump(x);
-                    System.Environment.FailFast("§df");
-                }
-            }
         }
     }
 }
