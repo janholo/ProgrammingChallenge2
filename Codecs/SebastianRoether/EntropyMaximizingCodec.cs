@@ -48,35 +48,35 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             }
         }
 
-        private void Compress(CompressionBuffer predictor, IotDevice lastDevice, IotDevice device)
+        private void Compress(CompressionBuffer buffer, IotDevice lastDevice, IotDevice device)
         {
-            predictor.CompressAndFold(4 + ((lastDevice == null || lastDevice.StatusMessage == null || lastDevice.StatusMessage != device.StatusMessage) ? 10 : 0));
-            predictor.CompressAndFold(device.Pressure.Value, 5);
-            predictor.CompressAndFold(device.Temperature.Value, 100);
-            predictor.CompressAndFold(device.Distance.Value, 1000);
+            buffer.CompressAndFold(4 + ((lastDevice == null || lastDevice.StatusMessage == null || lastDevice.StatusMessage != device.StatusMessage) ? 10 : 0));
+            buffer.CompressAndFold(device.Pressure.Value, 5);
+            buffer.CompressAndFold(device.Temperature.Value, 100);
+            buffer.CompressAndFold(device.Distance.Value, 1000);
         }
 
-        private IotDevice Decompress(CompressionBuffer predictor, IotDevice lastDevice)
+        private IotDevice Decompress(CompressionBuffer buffer, IotDevice lastDevice)
         {
             try 
             {
-                var uptime = (lastDevice?.UptimeInSeconds ?? 0) + (ulong)(predictor.Decompress().Value * 100.0);
-                string msg = lastDevice?.StatusMessage;
-                if (lastDevice == null || predictor.Decompress().Value < 0.1)
+                var uptime = (lastDevice?.UptimeInSeconds ?? 0) + (ulong)(buffer.Decompress().Value * 100.0);
+                string message = lastDevice?.StatusMessage;
+                if (lastDevice == null || buffer.Decompress().Value < 0.1)
                 {
-                    msg = CreateRandomString(3, predictor) + " " + CreateRandomString(4, predictor) + " " + CreateRandomString(3, predictor);
+                    message = buffer.DecompressString();
                 }
 
                 return new IotDevice(
                     lastDevice.Name,
                     lastDevice.Id,
-                    msg,
-                    predictor.Decompress().Value > 0.5,
-                    predictor.Decompress().Value > 0.5,
+                    message,
+                    buffer.DecompressBoolean(),
+                    buffer.DecompressBoolean(),
                     uptime,
-                    new PhysicalValue(predictor.Decompress().Value * 5.0, "bar"),
-                    new PhysicalValue(predictor.Decompress().Value * 100.0, "°C"),
-                    new PhysicalValue(predictor.Decompress().Value * 1000.0, "m"));
+                    new PhysicalValue(buffer.Decompress().Value * 5.0, "bar"),
+                    new PhysicalValue(buffer.Decompress().Value * 100.0, "°C"),
+                    new PhysicalValue(buffer.Decompress().Value * 1000.0, "m"));
             }
             catch(InvalidOperationException ioe)
             {
@@ -100,11 +100,6 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
                 _lastDecodedDevice = device;
                 return device;
             }
-        }
-
-        private string CreateRandomString(int length, CompressionBuffer predictor)
-        {
-            return new string(Enumerable.Repeat('a', length).Select(s => (char)((int)s + predictor.DecompressSimple().Value)).ToArray());
         }
     }
 }

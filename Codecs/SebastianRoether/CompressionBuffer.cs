@@ -3,19 +3,22 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
     using System;
     using System.Linq;
 
+    /*
+    *   Sorry, its deliberately made uglier than necessary
+    */
     public class CompressionBuffer
     {
         private int _p;
         private int _offset;
         private int?[] Buffer = new int?[1024];
         private bool[] Mask = new bool[1024];
-        private bool debug;
+        private bool _debug;
 
         public CompressionBuffer(bool debug)
         {
             _p = 0;
             _offset = 21;
-            this.debug = debug;
+            _debug = debug;
         }
 
         internal CompressionBuffer(int p, int offset, int?[] buffer, bool[] maskArray, bool debug)
@@ -24,7 +27,7 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             _offset = offset;
             Buffer = buffer;
             Mask = maskArray;
-            this.debug = debug;
+            _debug = debug;
         }
 
         public CompressionBuffer Clone()
@@ -33,7 +36,7 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             var maskClone = new bool[Mask.Length];
             Array.Copy(Buffer, copyArray, Buffer.Length);
             Array.Copy(Mask, maskClone, Mask.Length);
-            return new CompressionBuffer(_p, _offset, copyArray, maskClone, debug);
+            return new CompressionBuffer(_p, _offset, copyArray, maskClone, _debug);
         }
 
         private int? InternalDecompressAndUnfold()
@@ -119,14 +122,20 @@ namespace ProgrammingChallenge2.Codecs.SebastianRoether
             }
         }
 
-        public virtual int? DecompressSimple()
-        {
-            return (int?)(InternalDecompressAndUnfold() * (1.0 / Int32.MaxValue) * 25);
-        }
-
         public virtual double? Decompress()
         {
-            return InternalDecompressAndUnfold() * (1.0 / Int32.MaxValue);;
+            return InternalDecompressAndUnfold() * (1.0 / Int32.MaxValue);
+        }
+
+        public string DecompressString()
+        {
+            Func<int, string> expand = (c) => string.Concat((new char[c]).Select(s => (char)(s + 'a' + (int?)(InternalDecompressAndUnfold() * (1.0 / Int32.MaxValue) * 25).Value)));
+            return string.Join(" ", new []{expand(3), expand(4), expand(3)});
+        }
+
+        public bool DecompressBoolean()
+        {
+            return InternalDecompressAndUnfold() * (1.0 / Int32.MaxValue) > 0.5;
         }
 
         private bool Magic(int i, int check)
